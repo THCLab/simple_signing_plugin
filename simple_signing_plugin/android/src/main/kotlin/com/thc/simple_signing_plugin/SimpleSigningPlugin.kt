@@ -38,8 +38,6 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
   private var dataToSign: String = ""
   private var dataSignature: String = ""
   private lateinit var pendingResult: Result
-  private val latch = CountDownLatch(1)
-  private val syncObject : Object = Object()
 
 
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
@@ -49,21 +47,19 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
     keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
     checkIfDeviceSecure()
 
-    //Check if the keys already exists to avoid creating them again
     if (!checkKeyExists()) {
       generateKey()
     }
-
   }
 
   private fun checkIfDeviceSecure() : Boolean{
-    if (!keyguardManager.isDeviceSecure) {
+    return if (!keyguardManager.isDeviceSecure) {
       Toast.makeText(context, "Secure lock screen hasn't set up.", Toast.LENGTH_LONG).show()
       isDeviceSecure = false
-      return false
+      false
     }else{
       isDeviceSecure = true
-      return true
+      true
     }
   }
 
@@ -78,53 +74,12 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
       this.pendingResult = result
       val data = call.argument<String>("data")
       if (data != null) {
-        //signData(data)
         dataToSign = data
         val intent: Intent? = keyguardManager.createConfirmDeviceCredentialIntent("Keystore Sign And Verify",
-          "To be able to sign the data we need to confirm your identity. Please enter your pin/pattern or scan your fingerprint")
+          "In order to sign the data you need to confirm your identity. Please enter your pin/pattern or scan your fingerprint")
         if (intent != null) {
-          println("starting")
           activity.startActivityForResult(intent, REQUEST_CODE_FOR_CREDENTIALS)
-//          object : CountDownTimer(30000, 500) {
-//            override fun onTick(millisUntilFinished: Long) {
-//              println(dataSignature)
-//              if(!dataSignature.isNullOrEmpty()){
-//                this.cancel()
-//                result.success(dataSignature)
-//              }
-//            }
-//            override fun onFinish() {
-//              println("finished")
-//            }
-//          }.start()
         }
-        //działało z samym ifem zwracając po prostu false.
-//        while (dataSignature.isNullOrEmpty()){
-//
-//        }
-        //latch.await();
-//        synchronized(syncObject) {
-//          try {
-//            // Calling wait() will block this thread until another thread
-//            // calls notify() on the object.
-//            syncObject.wait()
-//          } catch (e: InterruptedException) {
-//            // Happens if someone interrupts your thread.
-//          }
-//        }
-
-//        if(!dataSignature.isNullOrEmpty()){
-//          result.success(dataSignature)
-//        }else{
-//          result.success(false)
-//        }
-
-//        if(dataSignature.isNotEmpty()){
-//          println(dataSignature)
-//          result.success(dataSignature)
-//        }else{
-//          result.error("UNAVAILABLE", "Something went wrong!", null)
-//        }
       }else{
         result.error("UNAVAILABLE", "Data cannot be null!", null)
       }
@@ -135,7 +90,7 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
         if(isValid){
           result.success(true)
         }else{
-          result.error("UNAVAILABLE", "Invalid data!", null)
+          result.success(false)
         }
       }else{
         result.error("UNAVAILABLE", "Key cannot be null!", null)
@@ -207,30 +162,6 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
     }
   }
 
-
-  //FUNCTION TO SIGN DATA, USED WHEN WRITING DATA INTO STORAGE
-  private fun signData(data: String){
-    dataToSign = data
-    if(isDeviceSecure){
-      try {
-        val intent: Intent? = keyguardManager.createConfirmDeviceCredentialIntent("Keystore Sign And Verify",
-          "To be able to sign the data we need to confirm your identity. Please enter your pin/pattern or scan your fingerprint")
-        if (intent != null) {
-          activity.startActivityForResult(intent, REQUEST_CODE_FOR_CREDENTIALS)
-        }
-
-      } catch (e: KeyPermanentlyInvalidatedException) {
-        //Exception thrown when the key has been invalidated for example when lock screen has been disabled.
-        Toast.makeText(context, "Keys are invalidated.\n" + e.message, Toast.LENGTH_LONG).show()
-      } catch (e: Exception) {
-        throw RuntimeException(e)
-      }
-     // return false
-    }else{
-     // return false
-    }
-  }
-
   //FUNCTION TO VERIFY DATA READ FROM SHARED PREFERENCES
   private fun verifyData(dataToVerify: String?) : Boolean {
     //We get the Keystore instance
@@ -238,8 +169,6 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
       val keyStore: KeyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply {
         load(null)
       }
-      println(dataToVerify)
-      println("cos")
       val signatureFromUser = dataToVerify?.subSequence(0, dataToVerify.indexOf(":")).toString()
       val dataFromUser = dataToVerify?.subSequence(dataToVerify.indexOf(":")+1, dataToVerify.length).toString()
 
@@ -256,7 +185,6 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
           update(dataFromUser.toByteArray())
           verify(signature)
         }
-
         return isValid
       }else{
         return false
@@ -267,23 +195,11 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
 
   }
 
-
-  private fun showAuthenticationScreen() {
-    val intent: Intent? = keyguardManager.createConfirmDeviceCredentialIntent("Keystore Sign And Verify",
-      "To be able to sign the data we need to confirm your identity. Please enter your pin/pattern or scan your fingerprint")
-    if (intent != null) {
-      activity.startActivityForResult(intent, REQUEST_CODE_FOR_CREDENTIALS)
-    }
-  }
-
   //FUNCTION TO CATCH AUTHENTICATION RESULT
   override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
-    println("Weszło w activity result")
     if (requestCode == REQUEST_CODE_FOR_CREDENTIALS) {
-      println("Weszło w request code")
       if (resultCode == Activity.RESULT_OK) {
         //We get the Keystore instance
-        println("Weszło w result code")
         val keyStore: KeyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply {
           load(null)
         }
@@ -301,7 +217,6 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
           dataSignature = signatureResult
           val stringConcat = "$signatureResult:$dataToSign"
           pendingResult.success(stringConcat)
-          println(signatureResult)
         }
         return true
       } else {
