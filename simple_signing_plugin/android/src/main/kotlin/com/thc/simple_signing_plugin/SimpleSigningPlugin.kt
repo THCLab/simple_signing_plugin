@@ -7,11 +7,9 @@ import android.content.Intent
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
-import android.security.keystore.UserNotAuthenticatedException
 import android.util.Base64
 import android.widget.Toast
 import androidx.annotation.NonNull
-
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -24,6 +22,7 @@ import java.math.BigInteger
 import java.security.*
 import java.security.cert.Certificate
 import java.util.*
+import java.util.concurrent.CountDownLatch
 import javax.security.auth.x500.X500Principal
 import kotlin.properties.Delegates
 
@@ -38,13 +37,16 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
   private var isDeviceSecure by Delegates.notNull<Boolean>()
   private var dataToSign: String = ""
   private var dataSignature: String = ""
+  private lateinit var pendingResult: Result
+  private val latch = CountDownLatch(1)
+  private val syncObject : Object = Object()
+
 
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
     channel = MethodChannel(flutterPluginBinding.binaryMessenger, "simple_signing_plugin")
     channel.setMethodCallHandler(this)
     context = flutterPluginBinding.applicationContext
     keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-
     checkIfDeviceSecure()
 
     //Check if the keys already exists to avoid creating them again
@@ -73,6 +75,7 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
 
   override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
     if (call.method == "signData"){
+      this.pendingResult = result
       val data = call.argument<String>("data")
       if (data != null) {
         //signData(data)
@@ -80,20 +83,52 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
         val intent: Intent? = keyguardManager.createConfirmDeviceCredentialIntent("Keystore Sign And Verify",
           "To be able to sign the data we need to confirm your identity. Please enter your pin/pattern or scan your fingerprint")
         if (intent != null) {
+          println("starting")
           activity.startActivityForResult(intent, REQUEST_CODE_FOR_CREDENTIALS)
+//          object : CountDownTimer(30000, 500) {
+//            override fun onTick(millisUntilFinished: Long) {
+//              println(dataSignature)
+//              if(!dataSignature.isNullOrEmpty()){
+//                this.cancel()
+//                result.success(dataSignature)
+//              }
+//            }
+//            override fun onFinish() {
+//              println("finished")
+//            }
+//          }.start()
         }
+        //działało z samym ifem zwracając po prostu false.
+//        while (dataSignature.isNullOrEmpty()){
+//
+//        }
+        //latch.await();
+//        synchronized(syncObject) {
+//          try {
+//            // Calling wait() will block this thread until another thread
+//            // calls notify() on the object.
+//            syncObject.wait()
+//          } catch (e: InterruptedException) {
+//            // Happens if someone interrupts your thread.
+//          }
+//        }
 
-        if(dataSignature.isNotEmpty()){
-          println(dataSignature)
-          result.success(dataSignature)
-        }else{
-          result.error("UNAVAILABLE", "Something went wrong!", null)
-        }
+//        if(!dataSignature.isNullOrEmpty()){
+//          result.success(dataSignature)
+//        }else{
+//          result.success(false)
+//        }
+
+//        if(dataSignature.isNotEmpty()){
+//          println(dataSignature)
+//          result.success(dataSignature)
+//        }else{
+//          result.error("UNAVAILABLE", "Something went wrong!", null)
+//        }
       }else{
         result.error("UNAVAILABLE", "Data cannot be null!", null)
       }
-    }
-    if (call.method == "verifyData"){
+    }else if (call.method == "verifyData"){
       val data = call.argument<String>("data")
       if(data != null){
         val isValid = verifyData(data)
@@ -105,8 +140,7 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
       }else{
         result.error("UNAVAILABLE", "Key cannot be null!", null)
       }
-    }
-    if(call.method == "checkIfDeviceSecure"){
+    }else if(call.method == "checkIfDeviceSecure"){
       val getResult = checkIfDeviceSecure()
       if (getResult){
         result.success(true)
@@ -179,12 +213,21 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
     dataToSign = data
     if(isDeviceSecure){
       try {
-
-
         val intent: Intent? = keyguardManager.createConfirmDeviceCredentialIntent("Keystore Sign And Verify",
           "To be able to sign the data we need to confirm your identity. Please enter your pin/pattern or scan your fingerprint")
         if (intent != null) {
           activity.startActivityForResult(intent, REQUEST_CODE_FOR_CREDENTIALS)
+//          object : CountDownTimer(30000, 500) {
+//            override fun onTick(millisUntilFinished: Long) {
+//              println(dataSignature)
+//              if (!dataSignature.isNullOrEmpty()){
+//                this.cancel()
+//                println("cancelled")
+//              }
+//            }
+//            override fun onFinish() {
+//            }
+//          }.start()
         }
 
 //        //We get the Keystore instance
@@ -267,32 +310,39 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
 
   //FUNCTION TO CATCH AUTHENTICATION RESULT
   override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
-    if (requestCode == REQUEST_CODE_FOR_CREDENTIALS) {
-      println("Weszło w activity result")
-      val keyStore: KeyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply {
-        load(null)
-      }
-      //Retrieves the private key from the keystore
-      val privateKey: PrivateKey = keyStore.getKey(KEY_ALIAS, null) as PrivateKey
-      //We sign the data with the private key. We use RSA algorithm along SHA-256 digest algorithm
-      val signature: ByteArray? = Signature.getInstance("SHA256withRSA").run {
-        initSign(privateKey)
-        update(dataToSign.toByteArray())
-        sign()
-      }
-      if (signature != null) {
-        //We encode and store in a variable the value of the signature
-        signatureResult = Base64.encodeToString(signature, Base64.DEFAULT)
-        dataSignature = signatureResult
-        println(signatureResult)
-        Activity.RESULT_OK
-      }
+    if (requestCode == REQUEST_CODE_FOR_CREDENTIALS && data!=null) {
       if (resultCode == Activity.RESULT_OK) {
         //We get the Keystore instance
-
+        println("Weszło w activity result")
+        val keyStore: KeyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply {
+          load(null)
+        }
+        //Retrieves the private key from the keystore
+        val privateKey: PrivateKey = keyStore.getKey(KEY_ALIAS, null) as PrivateKey
+        //We sign the data with the private key. We use RSA algorithm along SHA-256 digest algorithm
+        val signature: ByteArray? = Signature.getInstance("SHA256withRSA").run {
+          initSign(privateKey)
+          update(dataToSign.toByteArray())
+          sign()
+        }
+        if (signature != null) {
+          //We encode and store in a variable the value of the signature
+          signatureResult = Base64.encodeToString(signature, Base64.DEFAULT)
+          dataSignature = signatureResult
+          pendingResult.success(signatureResult)
+          println(signatureResult)
+//          synchronized(syncObject) {
+//            syncObject.notify();
+//          }
+        }
         return true
       } else {
         Toast.makeText(context, "Authentication failed.", Toast.LENGTH_SHORT).show()
+        pendingResult.success(false)
+//        synchronized(syncObject) {
+//          syncObject.notify();
+//        }
+        activity.finish()
         return false
       }
     }
