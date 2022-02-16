@@ -217,40 +217,8 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
           "To be able to sign the data we need to confirm your identity. Please enter your pin/pattern or scan your fingerprint")
         if (intent != null) {
           activity.startActivityForResult(intent, REQUEST_CODE_FOR_CREDENTIALS)
-//          object : CountDownTimer(30000, 500) {
-//            override fun onTick(millisUntilFinished: Long) {
-//              println(dataSignature)
-//              if (!dataSignature.isNullOrEmpty()){
-//                this.cancel()
-//                println("cancelled")
-//              }
-//            }
-//            override fun onFinish() {
-//            }
-//          }.start()
         }
 
-//        //We get the Keystore instance
-//        val keyStore: KeyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply {
-//          load(null)
-//        }
-//        //Retrieves the private key from the keystore
-//        val privateKey: PrivateKey = keyStore.getKey(KEY_ALIAS, null) as PrivateKey
-//        //We sign the data with the private key. We use RSA algorithm along SHA-256 digest algorithm
-//        val signature: ByteArray? = Signature.getInstance("SHA256withRSA").run {
-//          initSign(privateKey)
-//          update(data.toByteArray())
-//          sign()
-//        }
-//        if (signature != null) {
-//          //We encode and store in a variable the value of the signature
-//          signatureResult = Base64.encodeToString(signature, Base64.DEFAULT)
-//          return signatureResult
-//        }
-//      } catch (e: UserNotAuthenticatedException) {
-//        println("Użytkownik nieuwierzytelniony")
-//        //Exception thrown when the user has not been authenticated.
-//        showAuthenticationScreen()
       } catch (e: KeyPermanentlyInvalidatedException) {
         //Exception thrown when the key has been invalidated for example when lock screen has been disabled.
         Toast.makeText(context, "Keys are invalidated.\n" + e.message, Toast.LENGTH_LONG).show()
@@ -310,10 +278,12 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
 
   //FUNCTION TO CATCH AUTHENTICATION RESULT
   override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
-    if (requestCode == REQUEST_CODE_FOR_CREDENTIALS && data!=null) {
+    println("Weszło w activity result")
+    if (requestCode == REQUEST_CODE_FOR_CREDENTIALS) {
+      println("Weszło w request code")
       if (resultCode == Activity.RESULT_OK) {
         //We get the Keystore instance
-        println("Weszło w activity result")
+        println("Weszło w result code")
         val keyStore: KeyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply {
           load(null)
         }
@@ -329,19 +299,14 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
           //We encode and store in a variable the value of the signature
           signatureResult = Base64.encodeToString(signature, Base64.DEFAULT)
           dataSignature = signatureResult
-          pendingResult.success(signatureResult)
+          val stringConcat = "$signatureResult:$dataToSign"
+          pendingResult.success(stringConcat)
           println(signatureResult)
-//          synchronized(syncObject) {
-//            syncObject.notify();
-//          }
         }
         return true
       } else {
         Toast.makeText(context, "Authentication failed.", Toast.LENGTH_SHORT).show()
         pendingResult.success(false)
-//        synchronized(syncObject) {
-//          syncObject.notify();
-//        }
         activity.finish()
         return false
       }
