@@ -30,8 +30,6 @@ flutter:
       android:
         package: com.thc.simple_signing_plugin
         pluginClass: SimpleSigningPlugin
-      ios:
-        pluginClass: SimpleSigningPlugin
 
   # To add assets to your plugin package, add an assets section, like this:
   # assets:
