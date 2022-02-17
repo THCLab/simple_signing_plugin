@@ -120,14 +120,14 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
 
       val parameterSpec: KeyGenParameterSpec = KeyGenParameterSpec.Builder(KEY_ALIAS,
         KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY).run {
-        setCertificateSerialNumber(BigInteger.valueOf(777))       //Serial number used for the self-signed certificate of the generated key pair, default is 1
-        setCertificateSubject(X500Principal("CN=$KEY_ALIAS"))     //Subject used for the self-signed certificate of the generated key pair, default is CN=fake
-        setDigests(KeyProperties.DIGEST_SHA256)                         //Set of digests algorithms with which the key can be used
-        setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1) //Set of padding schemes with which the key can be used when signing/verifying
-        setCertificateNotBefore(startDate.time)                         //Start of the validity period for the self-signed certificate of the generated, default Jan 1 1970
-        setCertificateNotAfter(endDate.time)                            //End of the validity period for the self-signed certificate of the generated key, default Jan 1 2048
-        setUserAuthenticationRequired(true)                             //Sets whether this key is authorized to be used only if the user has been authenticated, default false
-        setUserAuthenticationValidityDurationSeconds(10)                //Duration(seconds) for which this key is authorized to be used after the user is successfully authenticated
+        setCertificateSerialNumber(BigInteger.valueOf(777))
+        setCertificateSubject(X500Principal("CN=$KEY_ALIAS"))
+        setDigests(KeyProperties.DIGEST_SHA256)
+        setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
+        setCertificateNotBefore(startDate.time)
+        setCertificateNotAfter(endDate.time)
+        setUserAuthenticationRequired(true)
+        setUserAuthenticationValidityDurationSeconds(10)
         build()
       }
       keyPairGenerator.initialize(parameterSpec)
