@@ -5,7 +5,6 @@ import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import android.widget.Toast
@@ -22,7 +21,6 @@ import java.math.BigInteger
 import java.security.*
 import java.security.cert.Certificate
 import java.util.*
-import java.util.concurrent.CountDownLatch
 import javax.security.auth.x500.X500Principal
 import kotlin.properties.Delegates
 
@@ -114,15 +112,12 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
   //FUNCTION TO GENERATE KEY TO SIGN/VERIFY DATA
   private fun generateKey() {
     if(isDeviceSecure){
-      //We create the start and expiry date for the key
       val startDate = GregorianCalendar()
       val endDate = GregorianCalendar()
       endDate.add(Calendar.YEAR, 1)
 
-      //We are creating a RSA key pair and store it in the Android Keystore
       val keyPairGenerator: KeyPairGenerator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, ANDROID_KEYSTORE)
 
-      //We are creating the key pair with sign and verify purposes
       val parameterSpec: KeyGenParameterSpec = KeyGenParameterSpec.Builder(KEY_ALIAS,
         KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY).run {
         setCertificateSerialNumber(BigInteger.valueOf(777))       //Serial number used for the self-signed certificate of the generated key pair, default is 1
@@ -135,11 +130,7 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
         setUserAuthenticationValidityDurationSeconds(10)                //Duration(seconds) for which this key is authorized to be used after the user is successfully authenticated
         build()
       }
-
-      //Initialization of key generator with the parameters we have specified above
       keyPairGenerator.initialize(parameterSpec)
-
-      //Generates the key pair
       keyPair = keyPairGenerator.genKeyPair()
     }
   }
@@ -147,12 +138,9 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
   //FUNCTION TO CHECK IF SIGN/VERIFY KEY EXISTS
   private fun checkKeyExists(): Boolean {
     if(isDeviceSecure){
-      //We get the Keystore instance
       val keyStore: KeyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply {
         load(null)
       }
-
-      //We get the private and public key from the keystore if they exists
       val privateKey: PrivateKey? = keyStore.getKey(KEY_ALIAS, null) as PrivateKey?
       val publicKey: PublicKey? = keyStore.getCertificate(KEY_ALIAS)?.publicKey
 
@@ -164,22 +152,16 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
 
   //FUNCTION TO VERIFY DATA READ FROM SHARED PREFERENCES
   private fun verifyData(dataToVerify: String?) : Boolean {
-    //We get the Keystore instance
     if(isDeviceSecure){
       val keyStore: KeyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply {
         load(null)
       }
       val signatureFromUser = dataToVerify?.subSequence(0, dataToVerify.indexOf(":")).toString()
       val dataFromUser = dataToVerify?.subSequence(dataToVerify.indexOf(":")+1, dataToVerify.length).toString()
-
-      //We get the certificate from the keystore
       val certificate: Certificate? = keyStore.getCertificate(KEY_ALIAS)
 
       if (certificate != null) {
-        //We decode the signature value
         val signature: ByteArray = Base64.decode(signatureFromUser, Base64.DEFAULT)
-
-        //We check if the signature is valid. We use RSA algorithm along SHA-256 digest algorithm
         val isValid: Boolean = Signature.getInstance("SHA256withRSA").run {
           initVerify(certificate)
           update(dataFromUser.toByteArray())
@@ -199,20 +181,16 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
   override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
     if (requestCode == REQUEST_CODE_FOR_CREDENTIALS) {
       if (resultCode == Activity.RESULT_OK) {
-        //We get the Keystore instance
         val keyStore: KeyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply {
           load(null)
         }
-        //Retrieves the private key from the keystore
         val privateKey: PrivateKey = keyStore.getKey(KEY_ALIAS, null) as PrivateKey
-        //We sign the data with the private key. We use RSA algorithm along SHA-256 digest algorithm
         val signature: ByteArray? = Signature.getInstance("SHA256withRSA").run {
           initSign(privateKey)
           update(dataToSign.toByteArray())
           sign()
         }
         if (signature != null) {
-          //We encode and store in a variable the value of the signature
           signatureResult = Base64.encodeToString(signature, Base64.DEFAULT)
           dataSignature = signatureResult
           val stringConcat = "$signatureResult:$dataToSign"
