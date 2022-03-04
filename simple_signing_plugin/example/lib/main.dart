@@ -16,7 +16,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  dynamic _signature ='';
+  dynamic _signature = '';
   String isVerified = '';
   late bool _verification;
   late bool isDeviceSecure;
@@ -28,62 +28,54 @@ class _MyAppState extends State<MyApp> {
     checkDeviceSecure();
   }
 
-  void checkDeviceSecure() async{
+  void checkDeviceSecure() async {
     isDeviceSecure = await SimpleSigningPlugin.checkIfDeviceSecure();
   }
-
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Signing example app'),
-        ),
-        body: Center(
-          child: Column(
-            children: [
-              TextFormField(
-                controller: signController,
-              ),
-              RawMaterialButton(
-                onPressed: () async{
-                  if(isDeviceSecure){
-                    _signature = await SimpleSigningPlugin.signData(signController.text);
-                    setState(() {});
-                  }
-                },
-                child: const Text(
-                  'Sign'
-                ),
-              ),
-              Text(
-               _signature.toString()
-              ),
-              RawMaterialButton(
-                onPressed: () async{
-                  if(isDeviceSecure && _signature.isNotEmpty){
-                    _verification = await SimpleSigningPlugin.verifyData(_signature);
-                    setState(() {
-                      if(_verification == false){
-                        isVerified = 'Invalid!';
-                      }else{
-                        isVerified = 'Valid!';
-                      }
-                    });
-                  }
-                },
-                child: const Text(
-                    'Verify'
-                ),
-              ),
-              Text(
-                  isVerified
-              ),
-            ],
+          appBar: AppBar(
+            title: const Text('Signing example app'),
           ),
-        )
-      ),
+          body: Center(
+            child: Column(
+              children: [
+                TextFormField(
+                  controller: signController,
+                ),
+                RawMaterialButton(
+                  onPressed: () async {
+                    if (isDeviceSecure) {
+                      _signature = await SimpleSigningPlugin.signData(
+                          signController.text);
+                      setState(() {});
+                    }
+                  },
+                  child: const Text('Sign'),
+                ),
+                Text(_signature.toString()),
+                RawMaterialButton(
+                  onPressed: () async {
+                    if (isDeviceSecure && _signature.isNotEmpty) {
+                      _verification =
+                          await SimpleSigningPlugin.verifyData(_signature);
+                      setState(() {
+                        if (_verification == false) {
+                          isVerified = 'Invalid!';
+                        } else {
+                          isVerified = 'Valid!';
+                        }
+                      });
+                    }
+                  },
+                  child: const Text('Verify'),
+                ),
+                Text(isVerified),
+              ],
+            ),
+          )),
     );
   }
 }

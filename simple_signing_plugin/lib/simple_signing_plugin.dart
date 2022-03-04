@@ -1,4 +1,3 @@
-
 import 'dart:async';
 
 import 'package:flutter/services.dart';
@@ -6,35 +5,34 @@ import 'package:flutter/services.dart';
 class SimpleSigningPlugin {
   static const MethodChannel _channel = MethodChannel('simple_signing_plugin');
 
-  static Future<dynamic> signData(String data) async{
-    try{
+  static Future<dynamic> signData(String data) async {
+    try {
       var result = await _channel.invokeMethod('signData', {'data': data});
-      if(result != false){
+      if (result != false) {
         return result;
-      }else{
+      } else {
         return false;
       }
-    }on PlatformException {
+    } on PlatformException {
       return false;
     }
   }
 
-  static Future<bool> verifyData(String data) async{
+  static Future<bool> verifyData(String data) async {
     var result = await _channel.invokeMethod('verifyData', {'data': data});
-    if(result == true){
+    if (result == true) {
       return true;
-    }else{
+    } else {
       return false;
     }
   }
 
-  static Future<bool> checkIfDeviceSecure() async{
+  static Future<bool> checkIfDeviceSecure() async {
     var result = await _channel.invokeMethod('checkIfDeviceSecure');
-    if(result == true){
+    if (result == true) {
       return true;
-    }else{
+    } else {
       return false;
     }
   }
-
 }

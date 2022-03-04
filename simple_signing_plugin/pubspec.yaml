@@ -1,5 +1,5 @@
 name: simple_signing_plugin
-description: A plugin for signing and verifying strings.
+description: A Flutter plugin for signing and verifying strings on Android devices.
 version: 0.0.1
 repository: https://github.com/THCLab/simple_signing_plugin
 
