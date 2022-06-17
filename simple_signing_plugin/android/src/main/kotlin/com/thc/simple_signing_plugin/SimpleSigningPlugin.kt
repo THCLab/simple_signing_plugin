@@ -62,7 +62,7 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
   }
 
   fun registerWith(registrar: PluginRegistry.Registrar) {
-    activity = registrar.activity()
+    activity = registrar.activity()!!
     val channel = MethodChannel(registrar.messenger(), "simple_signing_plugin")
     channel.setMethodCallHandler(SimpleSigningPlugin())
   }
