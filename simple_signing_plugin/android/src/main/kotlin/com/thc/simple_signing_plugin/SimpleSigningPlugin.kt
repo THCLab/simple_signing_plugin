@@ -61,11 +61,11 @@ class SimpleSigningPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Plug
     }
   }
 
-  fun registerWith(registrar: PluginRegistry.Registrar) {
-    activity = registrar.activity()!!
-    val channel = MethodChannel(registrar.messenger(), "simple_signing_plugin")
-    channel.setMethodCallHandler(SimpleSigningPlugin())
-  }
+//  fun registerWith(registrar: PluginRegistry.Registrar) {
+//    activity = registrar.activity()!!
+//    val channel = MethodChannel(registrar.messenger(), "simple_signing_plugin")
+//    channel.setMethodCallHandler(SimpleSigningPlugin())
+//  }
 
   override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
     if (call.method == "signData"){
